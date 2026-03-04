@@ -1,26 +1,6 @@
 "use client";
 import { motion } from 'framer-motion';
-
-const PYRAMID_DATA = [
-  {
-    label: "Top Notes",
-    title: "Abertura",
-    description: "O despertar imediato. Notas voláteis que introduzem o mistério.",
-    ingredients: ["Bergamota Italiana", "Pimenta Preta", "Zimbro"]
-  },
-  {
-    label: "Heart Notes",
-    title: "O Coração",
-    description: "A alma da fragrância. Onde a alquimia se estabiliza e pulsa.",
-    ingredients: ["Íris de Florença", "Couro Nobre", "Folhas de Violeta"]
-  },
-  {
-    label: "Base Notes",
-    title: "A Alma",
-    description: "A rastro eterno. Profundidade que permanece na pele e na memória.",
-    ingredients: ["Âmbar Cinza", "Vetiver do Haiti", "Oud de Laos"]
-  }
-];
+import { SILENTIVM_NOTES } from "@/constants/perfume";
 
 export const ScentPyramid = () => {
   return (
@@ -37,7 +17,7 @@ export const ScentPyramid = () => {
 
         {/* CONTAINER DA PIRÂMIDE */}
         <div className="space-y-12">
-          {PYRAMID_DATA.map((item, index) => (
+          {SILENTIVM_NOTES.map((item, index) => (
             <motion.div
               key={item.label}
               initial={{ opacity: 0, y: 20 }}

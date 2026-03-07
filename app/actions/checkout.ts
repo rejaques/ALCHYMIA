@@ -1,6 +1,7 @@
 "use server"
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { redirect } from 'next/navigation';
+import {PRODUCT_SILENTIVM} from "@/constants/product";
 
 const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN || ''
@@ -16,10 +17,10 @@ export async function createCheckout(formData: FormData) {
             body: {
                 items: [
                     {
-                        id: 'silentivm-01',
-                        title: 'Alchymia | Silentivm - Lote 01',
+                        id: PRODUCT_SILENTIVM.id,
+                        title: `Alchymia | ${PRODUCT_SILENTIVM.name} - Lote 01`,
                         quantity: 1,
-                        unit_price: 480.00,
+                        unit_price: PRODUCT_SILENTIVM.price, // Agora ele lê os 480.00 (ou 1.00) da constante
                         currency_id: 'BRL',
                     }
                 ],

@@ -6,30 +6,29 @@ const client = new MercadoPagoConfig({
 });
 
 export async function POST(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const id = searchParams.get('data.id');
+    try {
+        const body = await request.json();
 
-    // O Mercado Pago avisa sobre várias coisas, queremos apenas pagamentos
-    if (type === 'payment' && id) {
-        try {
-            const payment = await new Payment(client).get({ id });
+        // O Mercado Pago envia o ID do pagamento no corpo ou na query
+        // Dependendo da versão, pode vir como data.id
+        const paymentId = body.data?.id || body.resource?.split('/').pop();
+
+        if (body.type === 'payment' && paymentId) {
+            const payment = await new Payment(client).get({ id: paymentId });
 
             if (payment.status === 'approved') {
-                const customerEmail = payment.payer?.email;
-                const amount = payment.transaction_amount;
+                const email = payment.payer?.email;
+                console.log(`💰 SUCESSO: O cliente ${email} comprou o Silentivm!`);
 
-                console.log(`✅ Pagamento Aprovado! Cliente: ${customerEmail}, Valor: ${amount}`);
-
-                // TODO: Aqui você vai chamar a sua função de:
-                // 1. Marcar na planilha que esse e-mail agora é "CLIENTE LOTE 01"
-                // 2. Disparar o e-mail de "Boas-vindas ao Lote 01" via Resend
+                // AQUI É ONDE A MÁGICA ACONTECE:
+                // 1. Chamar sua função do Google Sheets para marcar como "PAGO".
+                // 2. Chamar o Resend para enviar o e-mail: "Seu Lote 01 está reservado".
             }
-        } catch (error) {
-            console.error('Erro ao processar Webhook:', error);
         }
-    }
 
-    // Sempre responda 200 para o Mercado Pago não ficar tentando reenviar
-    return NextResponse.json({ received: true }, { status: 200 });
+        return NextResponse.json({ status: 'ok' }, { status: 200 });
+    } catch (error) {
+        console.error('Erro no Webhook:', error);
+        return NextResponse.json({ error: 'Webhook Handler Failed' }, { status: 500 });
+    }
 }

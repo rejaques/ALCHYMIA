@@ -43,8 +43,12 @@ export default function SilentivmPage() {
                         <form action={createCheckout}>
                             <button
                                 type="submit"
-                                className="w-full bg-[#D4AF37] hover:bg-[#C19A2E] text-black font-bold py-5 px-10 transition-all duration-300 uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(212,175,55,0.2)]"
-                            >
+                                className="w-full bg-[#D4AF37] text-black font-bold py-5 px-10
+                                           uppercase tracking-[0.2em] text-sm
+                                           transition-all duration-300 ease-in-out
+                                           hover:bg-[#f3ca4c] hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(212,175,55,0.3)]
+                                           active:scale-[0.98] cursor-pointer ring-offset-2 focus:ring-2 focus:ring-[#D4AF37]"
+                                                        >
                                 Reservar Unidade do Lote 01
                             </button>
                         </form>

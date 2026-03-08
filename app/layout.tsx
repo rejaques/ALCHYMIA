@@ -54,7 +54,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+    <body className={inter.className} suppressHydrationWarning={true}>
         <SmoothScroll>
           {children}
         </SmoothScroll>

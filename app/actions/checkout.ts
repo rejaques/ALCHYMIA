@@ -1,29 +1,45 @@
 "use server"
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { redirect } from 'next/navigation';
-import {PRODUCT_SILENTIVM} from "@/constants/product";
+import { client } from '@/sanity/lib/sanity'; // Importamos o cliente do Sanity
 
-const client = new MercadoPagoConfig({
+const mpClient = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN || ''
 });
 
-// Adicionamos o parâmetro formData para satisfazer o contrato do React/Next
 export async function createCheckout(formData: FormData) {
     let checkoutUrl: string | undefined;
 
     try {
-        const preference = new Preference(client);
+        // 1. Pegamos o ID do produto que enviamos pelo formulário
+        const productId = formData.get('productId') as string;
+
+        // 2. Buscamos o preço REAL e o nome no Sanity (Segurança em 1º lugar)
+        const product = await client.fetch(
+            `*[_id == $productId][0]{name, price}`,
+            { productId }
+        );
+
+        if (!product) {
+            throw new Error("Produto não encontrado no banco de dados.");
+        }
+
+        // 3. Criamos a preferência no Mercado Pago com os dados do Sanity
+        const preference = new Preference(mpClient);
         const result = await preference.create({
             body: {
                 items: [
                     {
-                        id: PRODUCT_SILENTIVM.id,
-                        title: `Alchymia | ${PRODUCT_SILENTIVM.name} - Lote 01`,
+                        id: productId,
+                        title: `Alchymia | ${product.name}`,
                         quantity: 1,
-                        unit_price: PRODUCT_SILENTIVM.price, // Agora ele lê os 480.00 (ou 1.00) da constante
+                        unit_price: product.price, // Preço vindo direto do Sanity
                         currency_id: 'BRL',
                     }
                 ],
+
+                external_reference: productId,
+
                 back_urls: {
                     success: 'https://alchymiaparfums.com/sucesso',
                     failure: 'https://alchymiaparfums.com/produto/silentivm',
@@ -35,16 +51,10 @@ export async function createCheckout(formData: FormData) {
         checkoutUrl = result.init_point;
 
     } catch (error) {
-        // Logamos o erro no servidor para debug
-        console.error("Erro no processamento do Mercado Pago:", error);
-
-        // Em Server Actions simples, se der erro e você não redirecionar,
-        // o usuário simplesmente continuará na página atual.
+        console.error("Erro no checkout:", error);
     }
 
-    // O redirect DEVE ficar fora do try/catch.
-    // No Next.js, o redirect funciona lançando um erro interno,
-    // se o catch pegar esse erro, o redirecionamento morre.
+    // 4. Redirecionamento (sempre fora do try/catch no Next.js)
     if (checkoutUrl) {
         redirect(checkoutUrl);
     }

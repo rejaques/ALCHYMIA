@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from 'next-sanity';
 
+export const dynamic = 'force-dynamic';
+
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || '' });
 
 const sanityClient = createClient({
@@ -60,4 +62,12 @@ export async function POST(request: Request) {
     } catch (error) {
         return new Response(`Erro: ${error}`, { status: 500 });
     }
+}
+
+// Adicione isso no seu route.ts logo abaixo da função POST
+export async function GET() {
+    return NextResponse.json({
+        status: "alive",
+        message: "A rota está operante. Se você chegou aqui via POST, houve um redirecionamento no caminho."
+    });
 }

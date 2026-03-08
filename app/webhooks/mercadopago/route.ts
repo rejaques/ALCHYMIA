@@ -4,42 +4,60 @@ import { createClient } from 'next-sanity';
 
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || '' });
 
-// Cliente Sanity com permissão de ESCREVER
 const sanityClient = createClient({
-    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim(),
+    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET?.trim() || 'production',
     apiVersion: '2024-03-07',
-    token: process.env.SANITY_WRITE_TOKEN, // O token 'sk...' que você acabou de gerar
+    token: process.env.SANITY_WRITE_TOKEN,
     useCdn: false,
 });
 
 export async function POST(request: Request) {
+    console.log("--- 📥 NOVO WEBHOOK RECEBIDO ---");
+
     try {
         const body = await request.json();
-        const paymentId = body.data?.id;
+        console.log("📦 Body do MP:", JSON.stringify(body, null, 2));
 
-        if (body.type === 'payment' && paymentId) {
-            const payment = await new Payment(mpClient).get({ id: paymentId });
+        // 1. Verificar se é um evento de pagamento
+        // O MP envia 'type' ou 'action'. Vamos garantir que pegamos o ID.
+        const paymentId = body.data?.id || (body.type === 'payment' ? body.resource?.split('/').pop() : null);
 
-            if (payment.status === 'approved') {
-                // Pegamos o ID do produto que guardamos lá no external_reference
-                const productId = payment.external_reference;
+        if (!paymentId) {
+            console.log("⚠️ Webhook recebido sem ID de pagamento válido.");
+            return NextResponse.json({ status: 'ignored' });
+        }
 
-                if (productId) {
-                    // MÁGICA: Diminuir 1 do estoque de forma atômica
-                    await sanityClient
-                        .patch(productId)
-                        .setIfMissing({ stock: 0 })
-                        .dec({ stock: 1 })
-                        .commit();
+        console.log(`🔍 Buscando detalhes do pagamento: ${paymentId}`);
+        const payment = await new Payment(mpClient).get({ id: paymentId });
 
-                    console.log(`✅ Estoque do produto ${productId} reduzido!`);
-                }
+        console.log(`💳 Status do Pagamento: ${payment.status}`);
+        console.log(`🔗 External Reference (ID do Sanity): ${payment.external_reference}`);
+
+        // 2. Só baixa estoque se for aprovado E tiver o ID do produto
+        if (payment.status === 'approved') {
+            const productId = payment.external_reference;
+
+            if (productId) {
+                console.log(`🚀 Tentando baixar estoque do produto: ${productId}`);
+
+                const result = await sanityClient
+                    .patch(productId)
+                    .setIfMissing({ stock: 0 })
+                    .dec({ stock: 1 })
+                    .commit();
+
+                console.log("✅ SUCESSO: Estoque atualizado no Sanity!", result.stock);
+            } else {
+                console.log("❌ ERRO: O pagamento não tinha o 'external_reference' (ID do produto).");
             }
         }
-        return NextResponse.json({ status: 'ok' });
+
+        return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
     } catch (error) {
-        console.error('Erro no Webhook:', error);
-        return NextResponse.json({ error: 'Failed' }, { status: 500 });
+        return new Response(`Erro: ${error}`, { status: 500 });
     }
 }
